@@ -1,0 +1,15 @@
+*.iml
+.gradle/
+.gradle-home/
+.idea/
+.kotlin/
+build/
+captures/
+local.properties
+.externalNativeBuild/
+.cxx/
+*.hprof
+.DS_Store
+
+# Gradle 自动生成的 daemon JVM 配置，不应提交
+gradle/gradle-daemon-jvm.properties
