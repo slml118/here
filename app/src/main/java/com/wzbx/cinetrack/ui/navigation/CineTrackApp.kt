@@ -14,10 +14,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.wzbx.cinetrack.ui.detail.DetailScreen
 import com.wzbx.cinetrack.ui.screens.DiscoverScreen
 import com.wzbx.cinetrack.ui.screens.ReportScreen
 import com.wzbx.cinetrack.ui.screens.WatchlistScreen
@@ -35,12 +38,10 @@ private val tabs = listOf(
 )
 
 /**
- * App 骨架：底部导航 + 三个页面。
+ * App 骨架：底部导航 + 三个主页面 + 详情页。
  *
- * 导航写法说明：
- * - `launchSingleTop` 防止连点同一个 tab 压出一堆重复页面；
- * - `saveState / restoreState` 让切回来时滚动位置还在；
- * - `popUpTo(startDestinationId)` 保证返回栈不会越切越深。
+ * 详情页不显示在底部导航里，但它属于同一个 NavHost，
+ * 这样「列表 → 详情」的返回栈由 Navigation 统一管理。
  */
 @Composable
 fun CineTrackApp() {
@@ -77,11 +78,27 @@ fun CineTrackApp() {
             startDestination = "discover",
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable("discover") { DiscoverScreen() }
+            composable("discover") {
+                DiscoverScreen(onMovieClick = { movieId ->
+                    navController.navigate("detail/$movieId")
+                })
+            }
+
             composable("watchlist") {
                 WatchlistScreen(onGoDiscover = { navController.navigate("discover") })
             }
+
             composable("report") { ReportScreen() }
+
+            composable(
+                route = "detail/{movieId}",
+                arguments = listOf(navArgument("movieId") { type = NavType.LongType })
+            ) { entry ->
+                DetailScreen(
+                    movieId = entry.arguments?.getLong("movieId") ?: 0L,
+                    onBack = { navController.popBackStack() }
+                )
+            }
         }
     }
 }

@@ -3,42 +3,50 @@ package com.wzbx.cinetrack.ui.discover
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.wzbx.cinetrack.CineTrackApplication
-import com.wzbx.cinetrack.data.local.MovieEntity
+import com.wzbx.cinetrack.data.MovieRepository
 import com.wzbx.cinetrack.ui.components.UiState
-import kotlinx.coroutines.flow.SharingStarted
+import com.wzbx.cinetrack.ui.model.MovieUi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
+import java.io.IOException
 
 /**
- * 发现页的 ViewModel。
+ * 发现页：一次性拉取「本周热门」。
  *
- * 数据来自 Room 的 Flow，数据库一变界面自动刷新，
- * 不需要手动 load()，也不会出现「加入看单后列表不更新」。
+ * 失败不做缓存兜底，直接把错误交给界面显示 + 重试——
+ * 这样用户看到的就是真实状态，不会出现「看起来有数据其实全是旧的」。
  */
 class DiscoverViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = (application as CineTrackApplication).repository
+    private val repository = MovieRepository()
 
-    val state: StateFlow<UiState<List<MovieEntity>>> = repository.observeMovies()
-        .map { movies -> if (movies.isEmpty()) UiState.Empty else UiState.Success(movies) }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = UiState.Loading
-        )
+    private val _state = MutableStateFlow<UiState<List<MovieUi>>>(UiState.Loading)
+    val state: StateFlow<UiState<List<MovieUi>>> = _state.asStateFlow()
 
-    val watchlistIds: StateFlow<Set<Long>> = repository.observeWatchlistMovieIds()
-        .map { it.toSet() }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptySet()
-        )
-
-    fun addToWatchlist(movieId: Long) {
-        viewModelScope.launch { repository.addToWatchlist(movieId) }
+    init {
+        load()
     }
+
+    fun load() {
+        viewModelScope.launch {
+            _state.value = UiState.Loading
+            runCatching { repository.trending() }
+                .onSuccess { movies ->
+                    _state.value = if (movies.isEmpty()) UiState.Empty else UiState.Success(movies)
+                }
+                .onFailure { error ->
+                    _state.value = UiState.Error(error.toFriendlyMessage())
+                }
+        }
+    }
+}
+
+/** 把异常翻译成用户能看懂的一句话。 */
+internal fun Throwable.toFriendlyMessage(): String = when (this) {
+    is IOException -> "网络连接失败，请检查网络后重试"
+    is HttpException -> "服务器返回 ${code()}，请稍后重试"
+    else -> message ?: "加载失败，请重试"
 }
