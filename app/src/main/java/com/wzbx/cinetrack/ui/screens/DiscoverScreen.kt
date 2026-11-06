@@ -7,22 +7,33 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.wzbx.cinetrack.ui.components.ScreenHeader
 import com.wzbx.cinetrack.ui.components.StateContainer
-import com.wzbx.cinetrack.ui.components.UiState
-import com.wzbx.cinetrack.ui.model.SampleMovies
+import com.wzbx.cinetrack.ui.discover.DiscoverViewModel
 
 /**
- * 发现页：列表结构的样板。
+ * 发现页：列表来自 Room，加入看单直接写库。
  *
- * 现在喂的是 [SampleMovies]，阶段 C 换成 ViewModel 里的真实网络数据，
- * 页面代码基本不动。
+ * 数据流：Room(Flow) → ViewModel(StateFlow) → Compose。
+ * 这里没有手动刷新逻辑，数据库变了界面会自己更新。
  */
 @Composable
-fun DiscoverScreen(modifier: Modifier = Modifier) {
+fun DiscoverScreen(
+    modifier: Modifier = Modifier,
+    viewModel: DiscoverViewModel = viewModel()
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val watchlistIds by viewModel.watchlistIds.collectAsStateWithLifecycle()
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -30,19 +41,37 @@ fun DiscoverScreen(modifier: Modifier = Modifier) {
     ) {
         ScreenHeader(
             title = "发现",
-            subtitle = "示例数据 · 阶段 C 接入真实接口"
+            subtitle = "内置片库 · 阶段 C 接入真实接口"
         )
         StateContainer(
-            state = UiState.Success(SampleMovies.list),
-            modifier = Modifier.weight(1f)
+            state = state,
+            modifier = Modifier.weight(1f),
+            emptyText = "片库为空，稍后再试。"
         ) { movies ->
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(bottom = 16.dp)
             ) {
-                items(movies) { movie ->
-                    MovieCard(movie)
+                items(movies, key = { it.id }) { movie ->
+                    MovieCard(
+                        title = movie.title,
+                        meta = "${movie.releaseDate?.take(4) ?: "待定"} · ${movie.genres}",
+                        rating = movie.voteAverage,
+                        seed = movie.id
+                    ) {
+                        if (movie.id in watchlistIds) {
+                            Text(
+                                text = "已加入",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            TextButton(onClick = { viewModel.addToWatchlist(movie.id) }) {
+                                Text("加入看单")
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -22,7 +22,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.wzbx.cinetrack.ui.model.MovieUi
 
 private val posterColors = listOf(
     Color(0xFF2D3A4A),
@@ -34,28 +33,35 @@ private val posterColors = listOf(
 /**
  * 影片卡片。
  *
- * 海报位先用渐变色块占位：阶段 C 会换成 Coil 加载的网络图片，
- * 但卡片结构、文字层级现在就能定下来，后面只换一个图片组件。
+ * 海报位先用渐变色块占位，阶段 C 换成 Coil 加载的网络图片时只改这里。
+ * [trailing] 用来放「加入看单」之类的操作，发现页和看单页复用同一个卡片。
  */
 @Composable
-fun MovieCard(movie: MovieUi, modifier: Modifier = Modifier) {
+fun MovieCard(
+    title: String,
+    meta: String,
+    rating: Double,
+    seed: Long,
+    modifier: Modifier = Modifier,
+    trailing: @Composable () -> Unit = {}
+) {
     Card(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            PosterPlaceholder(movie)
+            PosterPlaceholder(title = title, seed = seed)
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = movie.title,
+                    text = title,
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "${movie.year} · ${movie.genre}",
+                    text = meta,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -63,18 +69,19 @@ fun MovieCard(movie: MovieUi, modifier: Modifier = Modifier) {
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = "★ ${movie.rating}",
+                    text = "★ $rating",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
+            trailing()
         }
     }
 }
 
 @Composable
-private fun PosterPlaceholder(movie: MovieUi) {
-    val base = posterColors[(movie.id % posterColors.size).toInt()]
+private fun PosterPlaceholder(title: String, seed: Long) {
+    val base = posterColors[((seed % posterColors.size).toInt() + posterColors.size) % posterColors.size]
     Box(
         modifier = Modifier
             .size(width = 64.dp, height = 88.dp)
@@ -83,7 +90,7 @@ private fun PosterPlaceholder(movie: MovieUi) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = movie.title.take(1),
+            text = title.take(1),
             style = MaterialTheme.typography.titleLarge,
             color = Color.White
         )
