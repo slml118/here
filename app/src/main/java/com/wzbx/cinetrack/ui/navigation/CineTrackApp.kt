@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -23,6 +24,7 @@ import androidx.navigation.navArgument
 import com.wzbx.cinetrack.ui.detail.DetailScreen
 import com.wzbx.cinetrack.ui.screens.DiscoverScreen
 import com.wzbx.cinetrack.ui.screens.ReportScreen
+import com.wzbx.cinetrack.ui.screens.SearchScreen
 import com.wzbx.cinetrack.ui.screens.WatchlistScreen
 
 private data class BottomTab(
@@ -33,15 +35,16 @@ private data class BottomTab(
 
 private val tabs = listOf(
     BottomTab("discover", "发现", Icons.Filled.Home),
+    BottomTab("search", "搜索", Icons.Filled.Search),
     BottomTab("watchlist", "看单", Icons.Filled.Star),
     BottomTab("report", "报告", Icons.Filled.DateRange)
 )
 
 /**
- * App 骨架：底部导航 + 三个主页面 + 详情页。
+ * App 骨架：底部四个 tab + 详情页。
  *
- * 详情页不显示在底部导航里，但它属于同一个 NavHost，
- * 这样「列表 → 详情」的返回栈由 Navigation 统一管理。
+ * 详情页不在底部导航里，但同属一个 NavHost，
+ * 返回栈由 Navigation 统一管理，从搜索页和发现页都能进去。
  */
 @Composable
 fun CineTrackApp() {
@@ -80,6 +83,12 @@ fun CineTrackApp() {
         ) {
             composable("discover") {
                 DiscoverScreen(onMovieClick = { movieId ->
+                    navController.navigate("detail/$movieId")
+                })
+            }
+
+            composable("search") {
+                SearchScreen(onMovieClick = { movieId ->
                     navController.navigate("detail/$movieId")
                 })
             }
